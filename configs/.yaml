@@ -1,0 +1,28 @@
+# Configuración de Audio y DSP
+audio:
+  sample_rate: 16000
+  frame_rate: 250
+  segment_duration: 3.0
+  overlap: 0.5  # 50% para el procesado de fragmentos
+
+# Arquitectura de la Red Monofónica (Core)
+model:
+  n_harmonics: 96
+  n_noise_filters: 64
+  hidden_size: 128
+  gru_units: 192
+  dense_output_size: 192
+  total_params_output: 161 # 1 (amp) + 96 (harm) + 64 (noise)
+
+# Configuración de la Pérdida (Loss)
+loss:
+  fft_sizes: [2048, 1024, 512, 256, 128, 64]
+  hop_ratio: 0.25  # 75% de overlap (hop = size * 0.25)
+  mag_weight: 1.0
+  log_mag_weight: 1.0
+
+# Hiperparámetros de Entrenamiento
+training:
+  learning_rate: 0.001 # 1e-3
+  global_batch_size: 12 # 6 por GPU T4 en Kaggle
+  optimizer: "adam"

@@ -1,0 +1,10 @@
+Tu hoja de ruta tecnológica
+Para llevar a cabo el proyecto, este sería tu "stack" ideal según lo que hemos hablado y lo que sugiere el paper:
+
+
+Entrenamiento (Investigación): Utilizarás PyTorch (IA) y el dataset Maestro para entrenar la arquitectura de DDSP-Piano.
+
+Exportación (El puente): Guardarás ese modelo en formato ONNX.
+
+
+Implementación (El Producto): Crearás el VST usando C++ (JUCE) y cargarás el archivo ONNX mediante RTNeural para que la latencia sea lo suficientemente baja para tocar en vivo.
