@@ -8,3 +8,17 @@ Exportación (El puente): Guardarás ese modelo en formato ONNX.
 
 
 Implementación (El Producto): Crearás el VST usando C++ (JUCE) y cargarás el archivo ONNX mediante RTNeural para que la latencia sea lo suficientemente baja para tocar en vivo.
+
+-Training_kaggle_5 
+------Added hammer filter------
+    # Hacemos la inversa
+    filtered_frames = tf.signal.irfft(filtered_fft)
+    # Desplazamos el pico al centro (Zero-Phase) usando tf.roll
+    filtered_frames = tf.roll(filtered_frames, shift=self.window_size // 2, axis=-1)
+    # Ahora sí aplicamos la ventana
+    filtered_frames = filtered_frames * tf.signal.hann_window(self.window_size)
+
+-------Class Detuner --------
+------
+probar tfrecords con 8 voices
+mejorar subida kaggle con flags 

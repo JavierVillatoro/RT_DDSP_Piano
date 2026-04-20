@@ -78,14 +78,20 @@ class FilteredNoiseSynthesizer:
         magnitudes_padded = tf.pad(noise_magnitudes, paddings=[[0, 0], [0, 0], [0, 1]])
         filtered_fft = noise_fft * tf.cast(magnitudes_padded, tf.complex64)
         
-        filtered_frames = tf.signal.irfft(filtered_fft) * tf.signal.hann_window(self.window_size)
+        #filtered_frames = tf.signal.irfft(filtered_fft) * tf.signal.hann_window(self.window_size)
+        # Hacemos la inversa
+        filtered_frames = tf.signal.irfft(filtered_fft)
+        # Desplazamos el pico al centro (Zero-Phase) usando tf.roll
+        filtered_frames = tf.roll(filtered_frames, shift=self.window_size // 2, axis=-1)
+        # Ahora sí aplicamos la ventana
+        filtered_frames = filtered_frames * tf.signal.hann_window(self.window_size)
         audio_noise = tf.signal.overlap_and_add(filtered_frames, frame_step=self.hop_size)
         return audio_noise[:, :N_SAMPLES]
 
 # ==============================================================================
-# 3. MÓDULOS DE MODELADO FÍSICO Y CONTEXTO
+# 3. MÓDULOS DE MODELADO FÍSICO Y CONTEXTO (Ascendidos a Model)
 # ==============================================================================
-class ContextNetwork(tf.keras.layers.Layer):
+class ContextNetwork(tf.keras.Model): # <--- CAMBIO AQUÍ
     def __init__(self, context_dim=32, gru_units=64):
         super().__init__()
         self.dense_in = tf.keras.layers.Dense(context_dim, activation=tf.nn.leaky_relu)
@@ -97,24 +103,35 @@ class ContextNetwork(tf.keras.layers.Layer):
         x = self.gru(x)
         return self.dense_out(x)
 
-class Detuner(tf.keras.layers.Layer):
+class Detuner(tf.keras.Model):
     def __init__(self):
         super().__init__()
+        # Desafinador Dinámico (Depende de la red)
         self.dense = tf.keras.layers.Dense(1, kernel_initializer='zeros')
+
+    def build(self, input_shape):
+        # Desafinador Estático (La imperfección física del piano real)
+        self.static_detune = self.add_weight(
+            name='static_detune',
+            shape=(1,),
+            initializer='zeros',
+            trainable=True
+        )
+        super().build(input_shape)
 
     def call(self, pitch_midi):
         x = pitch_midi / 127.0
-        return tf.nn.tanh(self.dense(x))
+        dynamic_detune = tf.nn.tanh(self.dense(x))
+        static_detune = tf.nn.tanh(self.static_detune)
+        return dynamic_detune + static_detune
 
-class TrainableReverb(tf.keras.layers.Layer):
+class TrainableReverb(tf.keras.Model): # <--- CAMBIO AQUÍ
     def __init__(self, ir_length=24000, lambda_ir=1e-4, **kwargs):
         super().__init__(**kwargs)
         self.ir_length = ir_length
         self.lambda_ir = lambda_ir
 
     def build(self, input_shape):
-        # FIX: Inicialización segura usando numpy directamente en lugar de tensores de TF
-        # para evitar el error 'SymbolicTensor has no attribute numpy'
         np_ir_init = np.random.normal(size=self.ir_length) * np.exp(-np.linspace(0.0, 5.0, self.ir_length))
         
         self.ir = self.add_weight(
@@ -138,6 +155,7 @@ class TrainableReverb(tf.keras.layers.Layer):
         return out
 
 class InharmonicityModel(tf.keras.layers.Layer):
+    # (Este lo dejamos como Layer porque se guarda dentro de DDSPCore)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -281,12 +299,20 @@ class MultiResolutionSpectralLoss(tf.keras.losses.Loss):
 # ==============================================================================
 def parse_tfrecord(example_proto):
     desc = {
-        'pitch': tf.io.FixedLenFeature([750], tf.float32), 
-        'velocity': tf.io.FixedLenFeature([750], tf.float32), 
+        # 8 voces x 750 frames = 6000
+        'pitch': tf.io.FixedLenFeature([6000], tf.float32), 
+        'velocity': tf.io.FixedLenFeature([6000], tf.float32), 
+        'pedal': tf.io.FixedLenFeature([750], tf.float32),
         'audio': tf.io.FixedLenFeature([48000], tf.float32)
     }
     parsed = tf.io.parse_single_example(example_proto, desc)
-    return tf.expand_dims(parsed['pitch'], -1), tf.expand_dims(parsed['velocity'], -1), parsed['audio']
+    
+    # Reshape a 8 voces
+    pitch = tf.reshape(parsed['pitch'], [8, 750, 1])
+    velocity = tf.reshape(parsed['velocity'], [8, 750, 1])
+    pedal = tf.expand_dims(parsed['pedal'], -1) # [750, 1]
+    
+    return pitch, velocity, pedal, parsed['audio']
 
 def get_distributed_dataset(tfrecord_path, global_batch_size, is_training=True):
     dataset = tf.data.TFRecordDataset(tfrecord_path).map(parse_tfrecord, num_parallel_calls=tf.data.AUTOTUNE)
@@ -309,7 +335,8 @@ def run_training():
     dist_val_dataset = strategy.experimental_distribute_dataset(get_distributed_dataset(VAL_TFRECORD, global_batch_size, is_training=False))
 
     with strategy.scope():
-        model = PolyphonicDDSPPiano(CONFIG, n_voices=1, per_replica_batch_size=per_replica_batch_size)
+        # CAMBIO: n_voices=8
+        model = PolyphonicDDSPPiano(CONFIG, n_voices=8, per_replica_batch_size=per_replica_batch_size)
         loss_fn = MultiResolutionSpectralLoss(CONFIG)
         optimizer = tf.keras.optimizers.Adam(learning_rate=CONFIG['training']['learning_rate'])
 
@@ -317,13 +344,13 @@ def run_training():
             return tf.nn.compute_average_loss(loss_fn(labels, predictions), global_batch_size=global_batch_size)
 
         print("\n[INFO] Construyendo variables (Dummy Pass Polifónico)...")
-        dummy_pitches = tf.zeros((1, 1, 750, 1), dtype=tf.float32)
-        dummy_velocities = tf.zeros((1, 1, 750, 1), dtype=tf.float32)
-        dummy_pedal = tf.zeros((1, 750, 1), dtype=tf.float32)
+        # CAMBIO: Los tensores dummy ahora tienen 8 en la dimensión de voces
+        dummy_pitches = tf.zeros((1, 8, 750, 1), dtype=tf.float32)
+        dummy_velocities = tf.zeros((1, 8, 750, 1), dtype=tf.float32)
+        dummy_pedal = tf.zeros((1, 750, 1), dtype=tf.float32) # El pedal es global
         
         dummy_inputs = {'pitches': dummy_pitches, 'velocities': dummy_velocities, 'pedal': dummy_pedal}
         
-        # FORZAMOS LA INICIALIZACIÓN COMPLETA
         _ = model(dummy_inputs) 
         
         optimizer.build(model.trainable_variables) 
@@ -331,13 +358,9 @@ def run_training():
 
     with strategy.scope():
         @tf.function
-        def train_step(pitch, velocity, real_audio):
-            p_pitch = tf.expand_dims(pitch, axis=1)
-            p_vel = tf.expand_dims(velocity, axis=1)
-            
-            dummy_pedal = tf.zeros_like(pitch)
-            
-            inputs = {'pitches': p_pitch, 'velocities': p_vel, 'pedal': dummy_pedal}
+        def train_step(pitch, velocity, pedal, real_audio): # Añadido 'pedal'
+            # pitch y velocity ya vienen con forma [Batch, 8, 750, 1]
+            inputs = {'pitches': pitch, 'velocities': velocity, 'pedal': pedal}
 
             with tf.GradientTape() as tape:
                 audio_pred = model(inputs, training=True)
@@ -354,12 +377,8 @@ def run_training():
             return strategy.reduce(tf.distribute.ReduceOp.SUM, strategy.run(train_step, args=inputs), axis=None)
 
         @tf.function
-        def val_step(pitch, velocity, real_audio):
-            p_pitch = tf.expand_dims(pitch, axis=1)
-            p_vel = tf.expand_dims(velocity, axis=1)
-            dummy_pedal = tf.zeros_like(pitch)
-            
-            inputs = {'pitches': p_pitch, 'velocities': p_vel, 'pedal': dummy_pedal}
+        def val_step(pitch, velocity, pedal, real_audio): # Añadido 'pedal'
+            inputs = {'pitches': pitch, 'velocities': velocity, 'pedal': pedal}
             
             audio_pred = model(inputs, training=False)
             
@@ -408,14 +427,18 @@ def run_training():
             current_lr = optimizer.learning_rate.numpy()
             pbar.set_postfix({"Train Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}", "LR": f"{current_lr:.1e}"})
         
+            # --- LÓGICA REDUCE LR ON PLATEAU ---
         if avg_val_loss < best_val_loss and avg_val_loss > 0:
             best_val_loss = avg_val_loss
             wait = 0
             
-            # FIX: Extensión revertida a .weights.h5 para Keras 3 save_weights
-            best_model_path = '/kaggle/working/checkpoints/ddsp_best_model.weights.h5'
-            model.save_weights(best_model_path)
-            print(f"  -> [NUEVO RÉCORD] Mejor modelo guardado con Val Loss: {best_val_loss:.4f}")
+            # --- EL NUEVO GUARDADO MODULAR (Preparado para C++ y a prueba de bugs) ---
+            model.core.save_weights('/kaggle/working/checkpoints/core.weights.h5')
+            model.context_net.save_weights('/kaggle/working/checkpoints/context.weights.h5')
+            model.detuner.save_weights('/kaggle/working/checkpoints/detuner.weights.h5')
+            model.reverb.save_weights('/kaggle/working/checkpoints/reverb.weights.h5')
+            
+            print(f"  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: {best_val_loss:.4f}")
         else:
             wait += 1
             
@@ -437,5 +460,10 @@ def run_training():
             plt.legend()
             plt.savefig('/kaggle/working/loss_curve.png', dpi=300)
             plt.close()
+
+    # --- JUSTO AL FINAL DE LA FUNCIÓN run_training() AÑADE ESTO ---
+    import shutil
+    shutil.make_archive('/kaggle/working/pesos_modulares_ddsp', 'zip', '/kaggle/working/checkpoints')
+    print("\n[INFO] Entrenamiento finalizado. Pesos comprimidos en 'pesos_modulares_ddsp.zip'.")
 
 run_training()
