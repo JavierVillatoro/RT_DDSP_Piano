@@ -23,3 +23,41 @@ Implementación (El Producto): Crearás el VST usando C++ (JUCE) y cargarás el 
 probar tfrecords con 8 voices
 mejorar subida kaggle con flags 
 
+
+--Training_kaggle_6_Fase1.py---
+0000 00:00:1776789227.212002     789 cuda_dnn.cc:529] Loaded cuDNN version 91002
+Época 001/300: 100%|██████████| 500/500 [04:14<00:00,  2.12batch/s]
+INFO:tensorflow:Reduce to /job:localhost/replica:0/task:0/device:CPU:0 then broadcast to ('/job:localhost/replica:0/task:0/device:CPU:0',).
+Época 001/300: 100%|██████████| 500/500 [06:39<00:00,  1.25batch/s, Train Loss=12.7378, Val Loss=10.7935, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 10.7935
+Época 002/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=9.6034, Val Loss=9.4248, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 9.4248
+Época 003/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=8.4704, Val Loss=8.6525, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 8.6525
+Época 004/300: 100%|██████████| 500/500 [06:17<00:00,  1.32batch/s, Train Loss=7.8925, Val Loss=7.8122, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 7.8122
+Época 005/300: 100%|██████████| 500/500 [06:17<00:00,  1.32batch/s, Train Loss=7.1284, Val Loss=7.0451, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 7.0451
+Época 006/300: 100%|██████████| 500/500 [06:17<00:00,  1.32batch/s, Train Loss=6.4907, Val Loss=6.7640, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.7640
+Época 007/300: 100%|██████████| 500/500 [06:17<00:00,  1.32batch/s, Train Loss=6.4246, Val Loss=6.6517, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.6517
+Época 008/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=6.5462, Val Loss=6.6127, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.6127
+Época 009/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=6.2399, Val Loss=6.3584, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.3584
+Época 010/300: 100%|██████████| 500/500 [06:17<00:00,  1.32batch/s, Train Loss=5.9674, Val Loss=6.2555, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.2555
+Época 011/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=5.8918, Val Loss=6.4580, LR=1.0e-03]
+Época 012/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=5.9549, Val Loss=6.3474, LR=1.0e-03]
+Época 013/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=5.7155, Val Loss=6.2686, LR=1.0e-03]
+Época 014/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=5.8467, Val Loss=6.5152, LR=1.0e-03]
+Época 015/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=6.0329, Val Loss=6.3118, LR=1.0e-03]
+Época 016/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=5.9597, Val Loss=6.2851, LR=1.0e-03]
+Época 017/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=5.7068, Val Loss=6.1397, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.1397
+Época 018/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=5.6605, Val Loss=6.0513, LR=1.0e-03]
+  -> [NUEVO RÉCORD] Módulos guardados independientemente. Val Loss: 6.0513
+Época 019/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=5.7667, Val Loss=6.1522, LR=1.0e-03]
+Época 020/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=5.5936, Val Loss=6.2327, LR=1.0e-03]
+

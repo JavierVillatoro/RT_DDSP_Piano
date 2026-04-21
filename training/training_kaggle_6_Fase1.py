@@ -1,3 +1,5 @@
+# FASE 1 - INHARMONICITY AND DETUNER OFF
+
 import tensorflow as tf
 import numpy as np
 import os
@@ -112,16 +114,16 @@ class ContextNetwork(tf.keras.Model):
 class Detuner(tf.keras.Model):
     def __init__(self):
         super().__init__()
-        # Desafinador Dinámico (Depende de la red)
         self.dense = tf.keras.layers.Dense(1, kernel_initializer='zeros')
+        # --- EL INTERRUPTOR MAESTRO: FASE 1 ---
+        self.trainable = False 
 
     def build(self, input_shape):
-        # Desafinador Estático (La imperfección física del piano real)
         self.static_detune = self.add_weight(
             name='static_detune',
             shape=(1,),
             initializer='zeros',
-            trainable=True
+            trainable=False
         )
         super().build(input_shape)
 
@@ -161,15 +163,16 @@ class TrainableReverb(tf.keras.Model): # <--- CAMBIO AQUÍ
         return out
 
 class InharmonicityModel(tf.keras.layers.Layer):
-    # (Este lo dejamos como Layer porque se guarda dentro de DDSPCore)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # --- EL INTERRUPTOR MAESTRO: FASE 1 ---
+        self.trainable = False 
 
     def build(self, input_shape):
-        self.alpha_B = self.add_weight(name='alpha_B', shape=(), initializer=tf.constant_initializer(-0.0847), trainable=True)
-        self.beta_B = self.add_weight(name='beta_B', shape=(), initializer=tf.constant_initializer(-5.82), trainable=True)
-        self.alpha_T = self.add_weight(name='alpha_T', shape=(), initializer=tf.constant_initializer(0.0926), trainable=True)
-        self.beta_T = self.add_weight(name='beta_T', shape=(), initializer=tf.constant_initializer(-13.64), trainable=True)
+        self.alpha_B = self.add_weight(name='alpha_B', shape=(), initializer=tf.constant_initializer(-0.0847), trainable=False)
+        self.beta_B = self.add_weight(name='beta_B', shape=(), initializer=tf.constant_initializer(-5.82), trainable=False)
+        self.alpha_T = self.add_weight(name='alpha_T', shape=(), initializer=tf.constant_initializer(0.0926), trainable=False)
+        self.beta_T = self.add_weight(name='beta_T', shape=(), initializer=tf.constant_initializer(-13.64), trainable=False)
         super().build(input_shape)
 
     def call(self, pitch_midi):
@@ -241,7 +244,23 @@ class PolyphonicDDSPPiano(tf.keras.Model):
         velocities = inputs['velocities'] 
         pedal = inputs['pedal']           
 
-        c_t = self.context_net(pedal) 
+        # --- NUEVO: PREPARACIÓN PARA EL CONTEXT NETWORK ---
+        # El Context Network necesita saber qué energía hay en TODO el piano.
+        # Sumamos las velocidades de las 8 voces para saber la "fuerza global"
+        global_vel = tf.reduce_sum(velocities, axis=1) # Shape: [Batch, Time, 1]
+        
+        # Para el pitch global, una suma no tiene sentido acústico, 
+        # así que promediamos los pitches activos (normalizados)
+        pitches_norm = pitches / 127.0
+        active_pitches = tf.where(velocities > 0, pitches_norm, 0.0)
+        global_pitch = tf.reduce_sum(active_pitches, axis=1) / (tf.reduce_sum(tf.cast(velocities > 0, tf.float32), axis=1) + 1e-7)
+        
+        # Concatenamos Pedal + Velocidad Global + Pitch Global Promedio
+        context_input = tf.concat([pedal, global_vel, global_pitch], axis=-1)
+        
+        # Ahora el Context Network tiene la imagen completa, como en el paper
+        c_t = self.context_net(context_input) 
+        # --------------------------------------------------
 
         audio_sum = 0.0
         
@@ -249,12 +268,8 @@ class PolyphonicDDSPPiano(tf.keras.Model):
             v_pitch = pitches[:, i, :, :] 
             v_vel = velocities[:, i, :, :]
 
-            # --- NUEVO: NORMALIZACIÓN DE ENTRADA ---
             v_pitch_norm = v_pitch / 127.0
             core_input = tf.concat([v_pitch_norm, v_vel, c_t], axis=-1)
-            # ---------------------------------------
-            
-            #core_input = tf.concat([v_pitch, v_vel, c_t], axis=-1)
             
             params = self.core(core_input, v_pitch, training=training) 
             
@@ -330,7 +345,7 @@ def get_distributed_dataset(tfrecord_path, global_batch_size, is_training=True):
     dataset = dataset.cache()
     if is_training:
         dataset = dataset.shuffle(1000).repeat()
-    return dataset.batch(global_batch_size, drop_remainder=is_training).prefetch(tf.data.AUTOTUNE) #drop_reminder = True
+    return dataset.batch(global_batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE) #drop_reminder = True
 
 def run_training():
     if not os.path.exists('/kaggle/working/checkpoints'):
