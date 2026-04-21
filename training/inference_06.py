@@ -292,48 +292,48 @@ def midi_to_controls(midi_path):
     return p_pitch, p_vel, p_pedal
 
 # ==============================================================================
-# 6. EJECUCIÓN PRINCIPAL 
+# 6. EJECUCIÓN PRINCIPAL (CANCIÓN COMPLETA)
 # ==============================================================================
 def synthesize_midi(midi_file, weights_folder, output_wav):
     p_pitch, p_vel, p_pedal = midi_to_controls(midi_file)
     
-    # Procesamos 15 segundos
-    max_frames = min(3750, p_pitch.shape[2]) 
-    p_pitch = p_pitch[:, :, :max_frames, :]
-    p_vel = p_vel[:, :, :max_frames, :]
-    p_pedal = p_pedal[:, :max_frames, :]
+    # Calculamos la duración total de la canción
+    total_frames = p_pitch.shape[2]
+    duracion_segundos = total_frames / CONFIG['audio']['frame_rate']
+    tiempo_estimado_minutos = int((duracion_segundos * 6) / 60) # Aprox 6x real-time
     
-    print(f"[INFO] Procesando los primeros {max_frames/250} segundos en un solo bloque...")
+    print(f"\n[INFO] Preparando canción COMPLETA: {duracion_segundos:.1f} segundos de audio.")
+    print(f"[INFO] ⚠️ En CPU, esto tardará aproximadamente {tiempo_estimado_minutos} minutos. ¡Ve a por un café!")
     
     model = PolyphonicDDSPPianoDynamic(CONFIG, n_voices=8)
     
-    print("[INFO] Instanciando red con Dummy Pass Polifónico...")
+    # Dummy pass (silencioso)
     dummy_pitch = tf.zeros((1, 8, 10, 1), dtype=tf.float32)
     dummy_vel = tf.zeros((1, 8, 10, 1), dtype=tf.float32)
     dummy_pedal = tf.zeros((1, 10, 1), dtype=tf.float32)
     _ = model({'pitches': dummy_pitch, 'velocities': dummy_vel, 'pedal': dummy_pedal})
     
-    print(f"[INFO] Cargando submódulos desde la carpeta: {weights_folder}...")
+    print(f"[INFO] Cargando pesos desde: {weights_folder}...")
     model.core.load_weights(os.path.join(weights_folder, "core.weights.h5"))
     model.context_net.load_weights(os.path.join(weights_folder, "context.weights.h5"))
     model.detuner.load_weights(os.path.join(weights_folder, "detuner.weights.h5"))
     model.reverb.load_weights(os.path.join(weights_folder, "reverb.weights.h5"))
-    print("[OK] Todos los módulos cargados con éxito.")
+    print("[OK] Red cargada. Iniciando motor DSP...\n")
     
-    print("[INFO] Sintetizando audio continuo (Esto tardará un minuto, paciencia)...")
+    # Procesamos la canción ENTERA de un solo bloque (Mantiene la fase perfecta)
     inputs = {'pitches': p_pitch, 'velocities': p_vel, 'pedal': p_pedal}
     audio_final = model(inputs)
     
     audio_np = tf.squeeze(audio_final).numpy()
     scipy.io.wavfile.write(output_wav, 16000, audio_np)
-    print(f"[ÉXITO] ¡Prueba de melodía guardada en {output_wav}!")
+    print(f"\n[ÉXITO] ¡Canción completa guardada en: {output_wav}")
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
     ARCHIVO_MIDI_PRUEBA = os.path.join(BASE_DIR, "Mompou.mid") 
     CARPETA_PESOS = os.path.join(BASE_DIR, "checkpoints_descargados_06") # Cambia esto a tu carpeta extraída
-    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_ddsp_fase1.wav")
+    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_ddsp_fase1_full.wav")
     
     if os.path.exists(ARCHIVO_MIDI_PRUEBA) and os.path.exists(CARPETA_PESOS):
         synthesize_midi(ARCHIVO_MIDI_PRUEBA, CARPETA_PESOS, SALIDA_WAV)
