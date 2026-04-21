@@ -22,3 +22,4 @@ Implementación (El Producto): Crearás el VST usando C++ (JUCE) y cargarás el 
 ------
 probar tfrecords con 8 voices
 mejorar subida kaggle con flags 
+
