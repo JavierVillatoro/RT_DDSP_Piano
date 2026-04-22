@@ -61,3 +61,4 @@ INFO:tensorflow:Reduce to /job:localhost/replica:0/task:0/device:CPU:0 then broa
 Época 019/300: 100%|██████████| 500/500 [06:17<00:00,  1.33batch/s, Train Loss=5.7667, Val Loss=6.1522, LR=1.0e-03]
 Época 020/300: 100%|██████████| 500/500 [06:16<00:00,  1.33batch/s, Train Loss=5.5936, Val Loss=6.2327, LR=1.0e-03]
 
+--Training_kaggle_6_Fase12.py---
