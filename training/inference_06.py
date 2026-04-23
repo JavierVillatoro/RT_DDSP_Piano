@@ -13,7 +13,7 @@ CONFIG = {
     'model': {'n_harmonics': 96, 'n_noise_filters': 64, 'hidden_size': 128, 'gru_units': 192, 'dense_output_size': 192},
 }
 
-MAX_VOICES = 8          
+MAX_VOICES = 24          
 T_RELEASE_SEC = 1.0     
 
 # ==============================================================================
@@ -277,17 +277,25 @@ def extract_sustain_pedal(midi_data, total_frames):
     return pedal_curve
 
 def midi_to_controls(midi_path):
-    print(f"[INFO] Analizando {midi_path} en modo polifónico (8 voces)...")
+    # Cargamos el MIDI
     midi_data = pretty_midi.PrettyMIDI(midi_path)
-    end_time = midi_data.get_end_time()
-    total_frames = int((end_time + 2.0) * CONFIG['audio']['frame_rate'])
+    total_time = midi_data.get_end_time()
+    # CORRECCIÓN: Usar CONFIG para el frame_rate
+    total_frames = int(total_time * CONFIG['audio']['frame_rate']) + 1 
     
+    # 1. Extraemos con el embudo abierto a MAX_VOICES (24)
     pitch_curves, vel_curves = extract_polyphony_and_release(midi_data, total_frames)
     pedal_curve = extract_sustain_pedal(midi_data, total_frames)
     
-    p_pitch = tf.convert_to_tensor(pitch_curves, dtype=tf.float32)[tf.newaxis, ..., tf.newaxis]
-    p_vel = tf.convert_to_tensor(vel_curves, dtype=tf.float32)[tf.newaxis, ..., tf.newaxis]
-    p_pedal = tf.convert_to_tensor(pedal_curve, dtype=tf.float32)[tf.newaxis, ..., tf.newaxis]
+    # 2. Convertimos a Tensores
+    p_pitch = tf.convert_to_tensor(pitch_curves, dtype=tf.float32)
+    p_pitch = tf.reshape(p_pitch, [1, MAX_VOICES, total_frames, 1])
+    
+    p_vel = tf.convert_to_tensor(vel_curves, dtype=tf.float32)
+    p_vel = tf.reshape(p_vel, [1, MAX_VOICES, total_frames, 1])
+    
+    p_pedal = tf.convert_to_tensor(pedal_curve, dtype=tf.float32)
+    p_pedal = tf.reshape(p_pedal, [1, total_frames, 1])
     
     return p_pitch, p_vel, p_pedal
 
@@ -297,19 +305,18 @@ def midi_to_controls(midi_path):
 def synthesize_midi(midi_file, weights_folder, output_wav):
     p_pitch, p_vel, p_pedal = midi_to_controls(midi_file)
     
-    # Calculamos la duración total de la canción
     total_frames = p_pitch.shape[2]
     duracion_segundos = total_frames / CONFIG['audio']['frame_rate']
-    tiempo_estimado_minutos = int((duracion_segundos * 6) / 60) # Aprox 6x real-time
+    tiempo_estimado_minutos = int((duracion_segundos * 6) / 60) 
     
     print(f"\n[INFO] Preparando canción COMPLETA: {duracion_segundos:.1f} segundos de audio.")
-    print(f"[INFO] ⚠️ En CPU, esto tardará aproximadamente {tiempo_estimado_minutos} minutos. ¡Ve a por un café!")
+    print(f"[INFO] ⚠️ En CPU")
     
-    model = PolyphonicDDSPPianoDynamic(CONFIG, n_voices=8)
+    model = PolyphonicDDSPPianoDynamic(CONFIG, n_voices=MAX_VOICES)
     
-    # Dummy pass (silencioso)
-    dummy_pitch = tf.zeros((1, 8, 10, 1), dtype=tf.float32)
-    dummy_vel = tf.zeros((1, 8, 10, 1), dtype=tf.float32)
+    # CORRECCIÓN: El Dummy Pass ahora usa MAX_VOICES dinámicamente
+    dummy_pitch = tf.zeros((1, MAX_VOICES, 10, 1), dtype=tf.float32)
+    dummy_vel = tf.zeros((1, MAX_VOICES, 10, 1), dtype=tf.float32)
     dummy_pedal = tf.zeros((1, 10, 1), dtype=tf.float32)
     _ = model({'pitches': dummy_pitch, 'velocities': dummy_vel, 'pedal': dummy_pedal})
     
@@ -320,7 +327,6 @@ def synthesize_midi(midi_file, weights_folder, output_wav):
     model.reverb.load_weights(os.path.join(weights_folder, "reverb.weights.h5"))
     print("[OK] Red cargada. Iniciando motor DSP...\n")
     
-    # Procesamos la canción ENTERA de un solo bloque (Mantiene la fase perfecta)
     inputs = {'pitches': p_pitch, 'velocities': p_vel, 'pedal': p_pedal}
     audio_final = model(inputs)
     
@@ -331,9 +337,9 @@ def synthesize_midi(midi_file, weights_folder, output_wav):
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    ARCHIVO_MIDI_PRUEBA = os.path.join(BASE_DIR, "Andrey.mid") 
+    ARCHIVO_MIDI_PRUEBA = os.path.join(BASE_DIR, "Ondine.mid") 
     CARPETA_PESOS = os.path.join(BASE_DIR, "checkpoints_descargados_06_2") # Cambia esto a tu carpeta extraída
-    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_ddsp_fase2_Andrey.wav")
+    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_ddsp_fase2_Ondine_3_24.wav")
     
     if os.path.exists(ARCHIVO_MIDI_PRUEBA) and os.path.exists(CARPETA_PESOS):
         synthesize_midi(ARCHIVO_MIDI_PRUEBA, CARPETA_PESOS, SALIDA_WAV)

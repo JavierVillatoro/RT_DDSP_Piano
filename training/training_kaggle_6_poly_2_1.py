@@ -241,7 +241,23 @@ class PolyphonicDDSPPiano(tf.keras.Model):
         velocities = inputs['velocities'] 
         pedal = inputs['pedal']           
 
-        c_t = self.context_net(pedal) 
+        # --- NUEVO: PREPARACIÓN PARA EL CONTEXT NETWORK ---
+        # El Context Network necesita saber qué energía hay en TODO el piano.
+        # Sumamos las velocidades de las 8 voces para saber la "fuerza global"
+        global_vel = tf.reduce_sum(velocities, axis=1) # Shape: [Batch, Time, 1]
+        
+        # Para el pitch global, una suma no tiene sentido acústico, 
+        # así que promediamos los pitches activos (normalizados)
+        pitches_norm = pitches / 127.0
+        active_pitches = tf.where(velocities > 0, pitches_norm, 0.0)
+        global_pitch = tf.reduce_sum(active_pitches, axis=1) / (tf.reduce_sum(tf.cast(velocities > 0, tf.float32), axis=1) + 1e-7)
+        
+        # Concatenamos Pedal + Velocidad Global + Pitch Global Promedio
+        context_input = tf.concat([pedal, global_vel, global_pitch], axis=-1)
+        
+        # Ahora el Context Network tiene la imagen completa, como en el paper
+        c_t = self.context_net(context_input) 
+        # --------------------------------------------------
 
         audio_sum = 0.0
         
@@ -249,12 +265,8 @@ class PolyphonicDDSPPiano(tf.keras.Model):
             v_pitch = pitches[:, i, :, :] 
             v_vel = velocities[:, i, :, :]
 
-            # --- NUEVO: NORMALIZACIÓN DE ENTRADA ---
             v_pitch_norm = v_pitch / 127.0
             core_input = tf.concat([v_pitch_norm, v_vel, c_t], axis=-1)
-            # ---------------------------------------
-            
-            #core_input = tf.concat([v_pitch, v_vel, c_t], axis=-1)
             
             params = self.core(core_input, v_pitch, training=training) 
             
