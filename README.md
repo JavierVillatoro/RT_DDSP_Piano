@@ -2,18 +2,18 @@
 
 This project involves the development of a high-fidelity polyphonic piano synthesizer based on the **DDSP (Differentiable Digital Signal Processing)** architecture. The main objective is to achieve a realistic synthesis that captures the timbral and physical subtleties of a grand piano, optimizing the model for real-time execution.
 
-## 📖 Inspiration and References
+##  Inspiration and References
 This work builds upon and expands the original research by Google Magenta:
 * **Original Paper:** *Renault, L., Mignot, R., & Roberts, A. (2022). (https://hal.science/hal-04073770v2/file/)*
 * **Dataset:** [MAESTRO Dataset (v3.0.0)](https://magenta.tensorflow.org/datasets/maestro), specifically utilizing recordings and MIDI files from the year 2009 for training and validation.
 
-## 🚀 Project Status and Results
+##  Project Status and Results
 The model has been trained following a hierarchical, phased learning scheme to ensure convergence and physical stability:
 
 1.  **Phase 1 (Timbral Learning):** Successfully captured the spectral signature of the piano (hammer strike, harmonic content, and background noise). A multi-resolution spectral loss of **~6.36** was achieved.
 2.  **Phase 2 (Physical Fine-Tuning):** Training of inharmonicity and micro-detuning parameters. An organic integration of acoustic beats (natural chorus) was achieved without compromising the fundamental tuning.
 
-## 🛠 Engineering Modifications and Improvements
+##  Engineering Modifications and Improvements
 Building upon the paper's base architecture, the following improvements have been implemented to resolve critical issues detected during inference testing:
 
 ### 1. Scalable Polyphony (Dynamic Voice Allocation)
@@ -31,11 +31,11 @@ Building upon the paper's base architecture, the following improvements have bee
 * **Diagnosis:** This was identified as a *Hidden State* management issue in *stateless* environments (TensorFlow/Python). By resetting the GRU's memory between blocks, the network loses its physical continuity. 
 * **VST Solution:** This behavior was identified as a laboratory artifact that will disappear in the real-time phase thanks to the *stateful* nature of RTNeural.
 
-## ⚠️ Tests Conducted
+##  Tests Conducted
 * **Test Renderings:** Complex works such as *Mompou* and passages by Ravel have been successfully rendered, validating timbral stability and correct voice allocation.
 * **Success Metric:** Spectral consistency maintained and absence of cutoffs during the string's *note release* phase.
 
-## ⏩ Current Phase: Live Implementation with RTNeural
+##  Current Phase: Live Implementation with RTNeural
 After validating the sonic quality in the research environment (Python), the project enters its final integration phase:
 1.  **Export:** Conversion of the trained weights (`.h5`) to a JSON format compatible with the **RTNeural** library.
 2.  **C++ Architecture:** Implementation of the synthesis engine in a VST plugin using the **JUCE** framework.
