@@ -1,45 +1,45 @@
-# DDSP-Piano: Síntesis de Piano mediante Modelado Físico Neuronal
+# DDSP-Piano: Piano Synthesis via Neural Physical Modeling
 
-Este proyecto consiste en el desarrollo de un sintetizador de piano polifónico de alta fidelidad basado en la arquitectura **DDSP (Differentiable Digital Signal Processing)**. El objetivo principal es lograr una síntesis realista que capture las sutilezas tímbricas y físicas de un piano de cola, optimizando el modelo para su ejecución en tiempo real.
+This project involves the development of a high-fidelity polyphonic piano synthesizer based on the **DDSP (Differentiable Digital Signal Processing)** architecture. The main objective is to achieve a realistic synthesis that captures the timbral and physical subtleties of a grand piano, optimizing the model for real-time execution.
 
-##  Inspiración y Referencias
-Este trabajo se basa y expande la investigación original de Google Magenta:
-* **Paper Original:** *Renault, L., Mignot, R., & Roberts, A. (2022). (https://hal.science/hal-04073770v2/file/)DDSP_Piano_JAES_final.pdf
-* **Dataset:** [MAESTRO Dataset (v3.0.0)](https://magenta.tensorflow.org/datasets/maestro), utilizando específicamente grabaciones y archivos MIDI del año 2009 para el entrenamiento y validación.
+## 📖 Inspiration and References
+This work builds upon and expands the original research by Google Magenta:
+* **Original Paper:** *Renault, L., Mignot, R., & Roberts, A. (2022). (https://hal.science/hal-04073770v2/file/)*
+* **Dataset:** [MAESTRO Dataset (v3.0.0)](https://magenta.tensorflow.org/datasets/maestro), specifically utilizing recordings and MIDI files from the year 2009 for training and validation.
 
-##  Estado del Proyecto y Resultados
-El modelo se ha entrenado siguiendo un esquema de aprendizaje jerárquico por fases para garantizar la convergencia y la estabilidad física:
+## 🚀 Project Status and Results
+The model has been trained following a hierarchical, phased learning scheme to ensure convergence and physical stability:
 
-1.  **Fase 1 (Aprendizaje Tímbrico):** Se logró capturar la firma espectral del piano (ataque de martillos, contenido armónico y ruido de fondo). Se alcanzó una pérdida espectral multiresolución de **~6.36**.
-2.  **Fase 2 (Ajuste Físico):** Entrenamiento de los parámetros de inarmonicidad y micro-desafinación (*Detuning*). Se ha logrado una integración orgánica de los batimientos acústicos (chorus natural) sin comprometer la afinación fundamental.
+1.  **Phase 1 (Timbral Learning):** Successfully captured the spectral signature of the piano (hammer strike, harmonic content, and background noise). A multi-resolution spectral loss of **~6.36** was achieved.
+2.  **Phase 2 (Physical Fine-Tuning):** Training of inharmonicity and micro-detuning parameters. An organic integration of acoustic beats (natural chorus) was achieved without compromising the fundamental tuning.
 
-##  Modificaciones de Ingeniería y Mejoras
-Sobre la arquitectura base del paper, se han implementado las siguientes mejoras para resolver problemas críticos detectados durante las pruebas de inferencia:
+## 🛠 Engineering Modifications and Improvements
+Building upon the paper's base architecture, the following improvements have been implemented to resolve critical issues detected during inference testing:
 
-### 1. Polifonía Escalable (Dynamic Voice Allocation)
-* **Problema:** El entrenamiento se limitó a 8 voces por restricciones de VRAM. En obras complejas (ej. *Ondine* de Ravel), el sistema sufría de "robo de notas" y cortes abruptos.
-* **Solución:** Se ha reestructurado el orquestador polifónico mediante pesos compartidos para permitir la inferencia de hasta **24 voces simultáneas**. Esto elimina los artefactos de corte y permite interpretar piezas de alta densidad polifónica con total fidelidad.
+### 1. Scalable Polyphony (Dynamic Voice Allocation)
+* **Problem:** Training was limited to 8 voices due to VRAM constraints. In complex pieces (e.g., Ravel's *Ondine*), the system suffered from "note stealing" and abrupt cutoffs.
+* **Solution:** The polyphonic orchestrator was restructured using shared weights to allow inference of up to **24 simultaneous voices**. This eliminates cutoff artifacts and enables the rendering of high-density polyphonic pieces with complete fidelity.
 
-### 2. Estabilización del Detuner (Control de Afinación)
-* **Problema:** El modelo original presentaba inestabilidades que derivaban en afinaciones caóticas (sonido "honky-tonk").
-* **Solución:** Se ha aplicado un "blindaje físico" mediante:
-    * **Inicialización estricta a cero:** Forzado de pesos en capas densas para asegurar que el piano nace perfectamente afinado.
-    * **Restricción de Excursión:** Limitación matemática de la salida del Detuner a **±5 cents** ($\pm 0.05$ semitonos). Esto permite la calidez del batimiento acústico pero impide desafinaciones audibles destructivas.
+### 2. Detuner Stabilization (Tuning Control)
+* **Problem:** The original model exhibited instabilities leading to chaotic tunings ("honky-tonk" sound).
+* **Solution:** A "physical safeguard" was applied via:
+    * **Strict zero initialization:** Forcing weights in dense layers to zero to ensure the piano starts perfectly in tune.
+    * **Excursion Restriction:** Mathematical limitation of the Detuner output to **±5 cents** ($\pm 0.05$ semitones). This allows for the warmth of acoustic beating while preventing audibly destructive detuning.
 
-### 3. Diagnóstico de la Amnesia RNN (Drift Temporal)
-* **Hallazgo:** Durante la inferencia en Python con archivos MIDI largos, se detectó una degradación tímbrica a partir de los 15-20 segundos. 
-* **Diagnóstico:** Se ha identificado como un problema de gestión del *Hidden State* en entornos *stateless* (TensorFlow/Python). Al resetearse la memoria de la GRU entre bloques, la red pierde la continuidad física. 
-* **Solución para VST:** Este comportamiento se ha identificado como un artefacto del laboratorio que desaparecerá en la fase de tiempo real gracias a la naturaleza *stateful* de RTNeural.
+### 3. RNN Amnesia Diagnosis (Temporal Drift)
+* **Finding:** During inference in Python with long MIDI files, timbral degradation was detected after 15-20 seconds. 
+* **Diagnosis:** This was identified as a *Hidden State* management issue in *stateless* environments (TensorFlow/Python). By resetting the GRU's memory between blocks, the network loses its physical continuity. 
+* **VST Solution:** This behavior was identified as a laboratory artifact that will disappear in the real-time phase thanks to the *stateful* nature of RTNeural.
 
-##  Pruebas Realizadas
-* **Interpretaciones de prueba:** Se han renderizado con éxito obras complejas como *Mompou* y pasajes de Ravel, validando la estabilidad tímbrica y la correcta asignación de voces.
-* **Métrica de éxito:** Consistencia espectral mantenida y ausencia de cortes en la fase de relajación (*note release*) de las cuerdas.
+## ⚠️ Tests Conducted
+* **Test Renderings:** Complex works such as *Mompou* and passages by Ravel have been successfully rendered, validating timbral stability and correct voice allocation.
+* **Success Metric:** Spectral consistency maintained and absence of cutoffs during the string's *note release* phase.
 
-## ⏩ Fase Actual: Implementación Live con RTNeural
-Tras validar la calidad sonora en el entorno de investigación (Python), el proyecto entra en su fase final de integración:
-1.  **Exportación:** Conversión de los pesos entrenados (`.h5`) a formato JSON compatible con la librería **RTNeural**.
-2.  **Arquitectura C++:** Implementación del motor de síntesis en un plugin VST utilizando el framework **JUCE**.
-3.  **Gestión de Estado:** Aprovechamiento de la persistencia del estado oculto en RTNeural para eliminar la amnesia de la red y permitir una interpretación infinita sin degradación.
+## ⏩ Current Phase: Live Implementation with RTNeural
+After validating the sonic quality in the research environment (Python), the project enters its final integration phase:
+1.  **Export:** Conversion of the trained weights (`.h5`) to a JSON format compatible with the **RTNeural** library.
+2.  **C++ Architecture:** Implementation of the synthesis engine in a VST plugin using the **JUCE** framework.
+3.  **State Management:** Leveraging the persistence of the hidden state in RTNeural to eliminate network amnesia and allow for infinite playback without degradation.
 
 ---
-*Este proyecto se desarrolla como parte de un Trabajo de Fin de Grado (TFG) centrado en la aplicación de Deep Learning al Procesamiento de Señales Digitales (DSP).*
+*This project is being developed as part of a Bachelor's Thesis (Trabajo de Fin de Grado - TFG) focused on the application of Deep Learning to Digital Signal Processing (DSP).*
