@@ -73,8 +73,17 @@ class DDSPCore(tf.keras.Model):
         self.harm_out = tf.keras.layers.Dense(cfg['n_harmonics'])
         self.noise_out = tf.keras.layers.Dense(cfg['n_noise_filters'])
 
+    #def call(self, core_input, pitch_midi):
+        #return core_input # Solo necesitamos la estructura para cargar pesos
+    
     def call(self, core_input, pitch_midi):
-        return core_input # Solo necesitamos la estructura para cargar pesos
+        # Obligamos a los datos a pasar por las capas para que Keras las construya
+        x = self.dense_hidden(self.gru(self.dense_in(core_input)))
+        _ = self.amp_out(x)
+        _ = self.harm_out(x)
+        _ = self.noise_out(x)
+        _ = self.inharmonicity(pitch_midi) # <- Esto crea el alpha_B, beta_B, etc.
+        return core_input
 
 # ==============================================================================
 # 2. LÓGICA DE EXPORTACIÓN
