@@ -113,6 +113,7 @@ class ContextNetwork(tf.keras.Model):
         x = self.gru(x)
         return self.dense_out(x)
 
+# Cambio en clase detuner por desafinacion , antes probar y mejorar en bloques 
 class Detuner(tf.keras.Model):
     def __init__(self):
         super().__init__()
