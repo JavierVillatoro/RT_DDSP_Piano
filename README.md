@@ -3,8 +3,8 @@
 This project involves the development of a high-fidelity polyphonic piano synthesizer based on the **DDSP (Differentiable Digital Signal Processing)** architecture. The main objective is to achieve a realistic synthesis that captures the timbral and physical subtleties of a grand piano, optimizing the model for real-time execution.
 
 ##  Inspiration and References
-This work builds upon and expands the original research by Google Magenta:
-* **Original Paper:** *Renault, L., Mignot, R., & Roberts, A. (2022). (https://hal.science/hal-04073770v2/file/)*
+This work builds upon and expands the original research:
+* **Original Paper:** *Renault, L., Mignot, R., & Roberts, A. (2022). (https://hal.science/hal-04073770v2/file/DDSP_Piano_JAES_final.pdf)*
 * **Dataset:** [MAESTRO Dataset (v3.0.0)](https://magenta.tensorflow.org/datasets/maestro), specifically utilizing recordings and MIDI files from the year 2009 for training and validation.
 
 ##  Project Status and Results
