@@ -1,0 +1,9 @@
+=== INICIANDO ARRANQUE DEL MOTOR ===
+JSON leido. Empezando inyeccion...
+[OK] Dense In
+[OK] GRU
+[OK] Dense Hidden
+[OK] Amp Out
+[OK] Harm Out
+[OK] Noise Out
+=== INYECCION COMPLETADA SIN ERRORES ===
