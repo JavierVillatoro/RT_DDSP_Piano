@@ -300,21 +300,43 @@ def midi_to_controls(midi_path):
     return p_pitch, p_vel, p_pedal
 
 # ==============================================================================
-# 6. EJECUCIÓN PRINCIPAL (CANCIÓN COMPLETA)
+# 6. EJECUCIÓN PRINCIPAL (GENERACIÓN POR BLOQUES CON CROSSFADE)
 # ==============================================================================
+def get_user_duration(total_frames, frame_rate):
+    max_sec = total_frames / frame_rate
+    print(f"\n[INFO] El MIDI cargado dura un total de {max_sec:.1f} segundos.")
+    ans = input("¿Cuántos segundos quieres generar? (Deja en blanco para la canción COMPLETA): ")
+    if ans.strip() == "":
+        return total_frames
+    try:
+        sec = float(ans)
+        return min(total_frames, int(sec * frame_rate))
+    except ValueError:
+        print("[AVISO] Entrada no válida. Generando la canción completa.")
+        return total_frames
+
 def synthesize_midi(midi_file, weights_folder, output_wav):
     p_pitch, p_vel, p_pedal = midi_to_controls(midi_file)
     
-    total_frames = p_pitch.shape[2]
-    duracion_segundos = total_frames / CONFIG['audio']['frame_rate']
-    tiempo_estimado_minutos = int((duracion_segundos * 6) / 60) 
+    total_frames_original = p_pitch.shape[2]
+    frame_rate = CONFIG['audio']['frame_rate']
+    sample_rate = CONFIG['audio']['sample_rate']
     
-    print(f"\n[INFO] Preparando canción COMPLETA: {duracion_segundos:.1f} segundos de audio.")
-    print(f"[INFO] ⚠️ En CPU")
+    # 1. PREGUNTAR AL USUARIO
+    frames_to_generate = get_user_duration(total_frames_original, frame_rate)
     
+    # Recortar tensores según lo que pidió el usuario
+    p_pitch = p_pitch[:, :, :frames_to_generate, :]
+    p_vel = p_vel[:, :, :frames_to_generate, :]
+    p_pedal = p_pedal[:, :frames_to_generate, :]
+    
+    duracion_segundos = frames_to_generate / frame_rate
+    print(f"\n[INFO] Preparando generación de: {duracion_segundos:.1f} segundos de audio en CPU...")
+    
+    # 2. CARGAR EL MODELO
     model = PolyphonicDDSPPianoDynamic(CONFIG, n_voices=MAX_VOICES)
     
-    # CORRECCIÓN: El Dummy Pass ahora usa MAX_VOICES dinámicamente
+    # Dummy Pass para inicializar la red
     dummy_pitch = tf.zeros((1, MAX_VOICES, 10, 1), dtype=tf.float32)
     dummy_vel = tf.zeros((1, MAX_VOICES, 10, 1), dtype=tf.float32)
     dummy_pedal = tf.zeros((1, 10, 1), dtype=tf.float32)
@@ -325,23 +347,85 @@ def synthesize_midi(midi_file, weights_folder, output_wav):
     model.context_net.load_weights(os.path.join(weights_folder, "context.weights.h5"))
     model.detuner.load_weights(os.path.join(weights_folder, "detuner.weights.h5"))
     model.reverb.load_weights(os.path.join(weights_folder, "reverb.weights.h5"))
-    print("[OK] Red cargada. Iniciando motor DSP...\n")
+    print("[OK] Red cargada. Iniciando procesamiento por bloques...\n")
     
-    inputs = {'pitches': p_pitch, 'velocities': p_vel, 'pedal': p_pedal}
-    audio_final = model(inputs)
+    # 3. CONFIGURACIÓN DEL CROSSFADE (Overlap-Add)
+    chunk_sec = 12.0
+    step_sec = 10.0
+    fade_sec = chunk_sec - step_sec  # 2.0 segundos de solapamiento
     
-    audio_np = tf.squeeze(audio_final).numpy()
-    scipy.io.wavfile.write(output_wav, 16000, audio_np)
-    print(f"\n[ÉXITO] ¡Canción completa guardada en: {output_wav}")
+    chunk_frames = int(chunk_sec * frame_rate)
+    step_frames = int(step_sec * frame_rate)
+    
+    total_samples = int((frames_to_generate / frame_rate) * sample_rate)
+    audio_final = np.zeros(total_samples, dtype=np.float32)
+    
+    fade_samples = int(fade_sec * sample_rate)
+    # Curvas de igual potencia para no perder volumen en la transición
+    fade_out = np.cos(np.linspace(0, np.pi/2, fade_samples, dtype=np.float32)) ** 2
+    fade_in  = np.sin(np.linspace(0, np.pi/2, fade_samples, dtype=np.float32)) ** 2
+
+    # 4. BUCLE DE INFERENCIA
+    start_frame = 0
+    chunk_idx = 1
+    
+    # Calculamos cuántos chunks habrá para el log visual
+    total_chunks = (frames_to_generate - chunk_frames) // step_frames + 2 if frames_to_generate > chunk_frames else 1
+
+    while start_frame < frames_to_generate:
+        end_frame = min(start_frame + chunk_frames, frames_to_generate)
+        
+        print(f"--- Procesando Bloque {chunk_idx}/{total_chunks} ({start_frame/frame_rate:.1f}s a {end_frame/frame_rate:.1f}s) ---")
+        
+        # Extraemos el fragmento de los tensores
+        chunk_pitch = p_pitch[:, :, start_frame:end_frame, :]
+        chunk_vel = p_vel[:, :, start_frame:end_frame, :]
+        chunk_pedal = p_pedal[:, start_frame:end_frame, :]
+        
+        inputs = {'pitches': chunk_pitch, 'velocities': chunk_vel, 'pedal': chunk_pedal}
+        
+        # Inferencia neuronal pura
+        chunk_audio_tensor = model(inputs)
+        chunk_audio = tf.squeeze(chunk_audio_tensor).numpy()
+        
+        # Matemáticas del posicionado de audio
+        start_sample = int((start_frame / frame_rate) * sample_rate)
+        audio_len = len(chunk_audio)
+        
+        if start_frame == 0:
+            # El primer bloque se pega tal cual
+            audio_final[start_sample : start_sample + audio_len] = chunk_audio
+        else:
+            # Aplicamos Fade In al inicio del nuevo bloque (que está amnésico)
+            current_fade_len = min(fade_samples, audio_len)
+            chunk_audio[:current_fade_len] *= fade_in[:current_fade_len]
+            
+            # Aplicamos Fade Out al final del audio viejo ya renderizado
+            audio_final[start_sample : start_sample + current_fade_len] *= fade_out[:current_fade_len]
+            
+            # Sumamos las ondas
+            audio_final[start_sample : start_sample + audio_len] += chunk_audio
+        
+        start_frame += step_frames
+        chunk_idx += 1
+
+    # 5. GUARDADO
+    print(f"\n[INFO] Normalizando audio a -1dB para evitar clipeo...")
+    max_val = np.max(np.abs(audio_final))
+    if max_val > 0:
+        audio_final = audio_final * (0.89 / max_val)
+
+    scipy.io.wavfile.write(output_wav, sample_rate, audio_final)
+    print(f"[ÉXITO] ¡Audio ensamblado y guardado en: {output_wav}")
 
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
     ARCHIVO_MIDI_PRUEBA = os.path.join(BASE_DIR, "Ondine.mid") 
     CARPETA_PESOS = os.path.join(BASE_DIR, "checkpoints_descargados_06_2") 
-    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_ddsp_fase2_Ondine_3_24.wav")
+    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_Ondine_Crossfade_full.wav")
     
     if os.path.exists(ARCHIVO_MIDI_PRUEBA) and os.path.exists(CARPETA_PESOS):
         synthesize_midi(ARCHIVO_MIDI_PRUEBA, CARPETA_PESOS, SALIDA_WAV)
     else:
-        print("[AVISO] Faltan archivos en este directorio.")
+        print("[AVISO] Faltan archivos en este directorio. Revisa las rutas.")

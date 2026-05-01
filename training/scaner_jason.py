@@ -1,7 +1,7 @@
 import json
 
 # Ruta exacta a tu archivo JSON
-ruta_json = r"C:\Users\franc\Desktop\proyectos\DDSP\training\rtneural_export\ddsp_core_weights.json"
+ruta_json = r"C:\Users\franc\Desktop\proyectos\DDSP\training\rtneural_export\inharmonicity_weights.json"
 
 print("Cargando el cerebro neuronal en memoria...\n")
 
