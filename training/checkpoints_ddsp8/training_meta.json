@@ -1,0 +1,19 @@
+{
+  "semantics_version": 2,
+  "sample_rate": 16000,
+  "frame_rate": 250,
+  "n_voices_train": 24,
+  "n_strings": 1,
+  "string_detune_cents": [
+    0.0
+  ],
+  "release_sec": 1.0,
+  "max_sustain_sec": 10.0,
+  "fade_frames": 3,
+  "pedal_threshold": 0.5,
+  "n_harmonics": 96,
+  "n_noise_filters": 64,
+  "warm_started": true,
+  "best_val_loss": 5.838125228881836,
+  "epoch": 102
+}

@@ -421,9 +421,9 @@ def synthesize_midi(midi_file, weights_folder, output_wav):
 if __name__ == "__main__":
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    ARCHIVO_MIDI_PRUEBA = os.path.join(BASE_DIR, "Ondine.mid") 
+    ARCHIVO_MIDI_PRUEBA = os.path.join(BASE_DIR, "Robert.mid") 
     CARPETA_PESOS = os.path.join(BASE_DIR, "checkpoints_descargados_06_2") 
-    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_Ondine_Crossfade_full.wav")
+    SALIDA_WAV = os.path.join(BASE_DIR, "resultado_glasper_Crossfade_full.wav")
     
     if os.path.exists(ARCHIVO_MIDI_PRUEBA) and os.path.exists(CARPETA_PESOS):
         synthesize_midi(ARCHIVO_MIDI_PRUEBA, CARPETA_PESOS, SALIDA_WAV)

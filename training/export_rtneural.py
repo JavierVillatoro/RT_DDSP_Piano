@@ -115,6 +115,7 @@ def export_to_rtneural(weights_folder, output_folder):
 
     core = DDSPCore(CONFIG)
     context = ContextNetwork()
+    has_detuner = os.path.exists(os.path.join(weights_folder, "detuner.weights.h5"))
     detuner = Detuner()
     reverb = TrainableReverb()
 
@@ -127,7 +128,8 @@ def export_to_rtneural(weights_folder, output_folder):
     print(f"[1/4] Cargando pesos .h5 desde {weights_folder}...")
     core.load_weights(os.path.join(weights_folder, "core.weights.h5"))
     context.load_weights(os.path.join(weights_folder, "context.weights.h5"))
-    detuner.load_weights(os.path.join(weights_folder, "detuner.weights.h5"))
+    if has_detuner:  # los entrenamientos nuevos (training_kaggle_7) ya no tienen detuner
+        detuner.load_weights(os.path.join(weights_folder, "detuner.weights.h5"))
     reverb.load_weights(os.path.join(weights_folder, "reverb.weights.h5"))
 
     print("[2/4] Exportando Reverb a WAV...")
