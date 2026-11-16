@@ -1,0 +1,3 @@
+Prueba a ciegas con el PLUGIN REAL (mismo codigo que el Standalone y el VST3), 30 s de Robert.mid, 4 configuraciones.
+Bass Tuning esta activado en tres de ellas. Ordena de 'mas cheesy' a 'menos cheesy'. Despues abre la CLAVE.
+Esta carpeta sustituye a informes/test_cheesy (aquella era una emulacion aproximada).

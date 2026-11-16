@@ -1,0 +1,11 @@
+== Pasaje 'agudo' (MIDI-Unprocessed_06_R1_2009_01-02_ORIG_M..., desde 1300 s) ==
+agudo_1.wav  ->  32 kHz (hasta 16 kHz)
+agudo_2.wav  ->  original (44,1 kHz, hasta 22 kHz)
+agudo_3.wav  ->  24 kHz (hasta 12 kHz)
+agudo_4.wav  ->  16 kHz (lo que suena hoy: hasta 8 kHz)
+
+== Pasaje 'general' (MIDI-Unprocessed_06_R1_2009_01-02_ORIG_M..., desde 55 s) ==
+general_1.wav  ->  original (44,1 kHz, hasta 22 kHz)
+general_2.wav  ->  16 kHz (lo que suena hoy: hasta 8 kHz)
+general_3.wav  ->  24 kHz (hasta 12 kHz)
+general_4.wav  ->  32 kHz (hasta 16 kHz)

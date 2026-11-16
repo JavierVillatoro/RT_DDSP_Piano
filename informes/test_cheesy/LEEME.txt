@@ -1,0 +1,3 @@
+Prueba a ciegas: el mismo pasaje de Robert.mid (30 s) con 4 configuraciones del plugin, pasado por una emulacion de la cadena
+(motor estereo + reverb estereo + ganancia + limitador). Ordena de 'mas cheesy' a 'menos cheesy' y dime cual es la mejor.
+Despues abre CLAVE_no_abrir_hasta_el_final.txt.

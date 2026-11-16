@@ -1,0 +1,4 @@
+real_1.wav  ->  B_graves_y_damper  {'humanize': 0, 'unison': 0, 'bassb': 1, 'damper': 1, 'mechanics': 0, 'evenness': 0}
+real_2.wav  ->  D_C_mas_mecanica_evenness  {'humanize': 0.4, 'unison': 0.4, 'bassb': 1, 'damper': 1, 'mechanics': 0.6, 'evenness': 0.5}
+real_3.wav  ->  A_base  {'humanize': 0, 'unison': 0, 'bassb': 0, 'damper': 0, 'mechanics': 0, 'evenness': 0}
+real_4.wav  ->  C_B_mas_humanize_unison  {'humanize': 0.4, 'unison': 0.4, 'bassb': 1, 'damper': 1, 'mechanics': 0, 'evenness': 0}

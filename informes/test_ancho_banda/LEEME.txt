@@ -1,0 +1,5 @@
+Prueba a ciegas de ancho de banda (MAESTRO 2009, grabacion real, estereo 44,1 kHz).
+Hay dos pasajes ('agudo' y 'general'), cada uno con 4 versiones numeradas 1-4 en orden aleatorio.
+Las 4 versiones son la misma musica con el ancho de banda de un modelo a 16, 24 y 32 kHz, y el original sin recortar.
+Escucha con buenos auriculares o monitores, mismo volumen, y ordena de 'mas apagada' a 'mas brillante/aireada'.
+Cuando termines, abre CLAVE_no_abrir_hasta_el_final.txt para comprobar tus respuestas.

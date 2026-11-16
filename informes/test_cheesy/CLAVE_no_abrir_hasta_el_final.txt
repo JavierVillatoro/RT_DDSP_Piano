@@ -1,0 +1,5 @@
+(humanize, unison, bassTuning, damper, mechanics, evenness)
+cheesy_1.wav  ->  C_sin_mecanica  (0.4, 0.4, 1.0, 1.0, 0.0, 0.5)
+cheesy_2.wav  ->  D_sin_vida_ni_graves  (0.0, 0.0, 0.0, 1.0, 0.6, 0.5)
+cheesy_3.wav  ->  A_base  (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+cheesy_4.wav  ->  B_todo_por_defecto  (0.4, 0.4, 1.0, 1.0, 0.6, 0.5)
